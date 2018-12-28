@@ -107,7 +107,7 @@ module Danger
       require 'oga'
       report = Oga.parse_xml(file)
 
-      report.xpath('//issue')
+      report.xpath('//error')
     end
 
     def filter_issues_by_severity(issues)
