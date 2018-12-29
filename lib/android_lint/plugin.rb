@@ -124,7 +124,9 @@ module Danger
       message = ""
 
       SEVERITY_LEVELS.reverse.each do |level|
-        filtered = issues.select{|issue| issue.get("severity") == level}
+        filtered = issues.select{ |issue|
+          issue.get("severity").downcase == level.downcase
+        }
         message << parse_results(filtered, level) unless filtered.empty?
       end
 
@@ -164,7 +166,9 @@ module Danger
       target_files = (git.modified_files - git.deleted_files) + git.added_files
       dir = "#{Dir.pwd}/"
       SEVERITY_LEVELS.reverse.each do |level|
-        filtered = issues.select{|issue| issue.get("severity") == level}
+        filtered = issues.select{ |issue|
+          issue.get("severity").downcase == level.downcase
+        }
         next if filtered.empty?
         filtered.each do |r|
           location = r.xpath('location').first
