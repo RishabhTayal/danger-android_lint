@@ -104,15 +104,23 @@ module Danger
     def read_issues_from_report
       file = File.open(report_file)
 
-      require 'oga'
-      report = Oga.parse_xml(file)
+      xml = File.read(report_file)
+      require 'active_support/core_ext/hash'
+      json = Hash.from_xml(xml).to_json
 
-      report.xpath('//error')
+      jsonObject = JSON.parse(json)
+      files = jsonObject['checkstyle']['file']
+      files = files.select do | file |
+        file['error'] != nil
+      end
+
+      files
+      
     end
 
     def filter_issues_by_severity(issues)
       issues.select do |issue|
-        severity_index(issue.get("severity")) >= severity_index(severity)
+        severity_index(issue['error']["severity"]) >= severity_index(severity)
       end
     end
 
@@ -125,7 +133,7 @@ module Danger
 
       SEVERITY_LEVELS.reverse.each do |level|
         filtered = issues.select{ |issue|
-          issue.get("severity").downcase == level.downcase
+          issue['error']["severity"].downcase == level.downcase
         }
         message << parse_results(filtered, level) unless filtered.empty?
       end
@@ -140,11 +148,11 @@ module Danger
       message = ""
 
       results.each do |r|
-        location = r.xpath('location').first
-        filename = location.get('file').gsub(dir, "")
+        puts r
+        filename = r['name'].gsub(dir, "")
         next unless !filtering || (target_files.include? filename)
-        line = location.get('line') || 'N/A'
-        reason = r.get('message')
+        line = r['error']['line'] || 'N/A'
+        reason = r['error']['message']
         count = count + 1
         message << "`#{filename}` | #{line} | #{reason} \n"
       end
@@ -167,15 +175,18 @@ module Danger
       dir = "#{Dir.pwd}/"
       SEVERITY_LEVELS.reverse.each do |level|
         filtered = issues.select{ |issue|
-          issue.get("severity").downcase == level.downcase
+          issue['error']["severity"].downcase == level.downcase
         }
         next if filtered.empty?
         filtered.each do |r|
-          location = r.xpath('location').first
-          filename = location.get('file').gsub(dir, "")
+          # location = r.xpath('location')
+          message = r['error']['message']
+          # puts message
+          # location = r.xpath('location').first
+          filename = r['name'].gsub(dir, "")
           next unless !filtering || (target_files.include? filename)
-          line = (location.get('line') || "0").to_i
-          send(level === "Warning" ? "warn" : "fail", r.get('message'), file: filename, line: line)
+          line = (r['error']['line'] || "0").to_i
+          send(level === "Warning" ? "warn" : "fail", message, file: filename, line: line)
         end
       end
     end
