@@ -120,7 +120,14 @@ module Danger
 
     def filter_issues_by_severity(issues)
       issues.select do |issue|
-        severity_index(issue['error']["severity"]) >= severity_index(severity)
+        # puts "error #{issue['error']}"
+        if issue['error'].kind_of?(Array)
+          issue['error'].each do |error|
+            severity_index(error["severity"]) >= severity_index(severity)
+          end
+        else
+          severity_index(issue['error']["severity"]) >= severity_index(severity)
+        end
       end
     end
 
@@ -132,8 +139,14 @@ module Danger
       message = ""
 
       SEVERITY_LEVELS.reverse.each do |level|
-        filtered = issues.select{ |issue|
-          issue['error']["severity"].downcase == level.downcase
+        filtered = issues.select { |issue|
+          if issue['error'].kind_of?(Array)
+            issue['error'].each do |error|
+              error["severity"].downcase == level.downcase
+            end
+          else
+            issue['error']["severity"].downcase == level.downcase
+          end
         }
         message << parse_results(filtered, level) unless filtered.empty?
       end
@@ -148,13 +161,22 @@ module Danger
       message = ""
 
       results.each do |r|
-        puts r
         filename = r['name'].gsub(dir, "")
         next unless !filtering || (target_files.include? filename)
-        line = r['error']['line'] || 'N/A'
-        reason = r['error']['message']
-        count = count + 1
-        message << "`#{filename}` | #{line} | #{reason} \n"
+
+        if r['error'].kind_of?(Array)
+          r['error'].each do |error|
+            line = error['line'] || 'N/A'
+            reason = error['message']
+            count = count + 1
+            message << "`#{filename}` | #{line} | #{reason} \n"
+          end
+        else
+          line = r['error']['line'] || 'N/A'
+          reason = r['error']['message']
+          count = count + 1
+          message << "`#{filename}` | #{line} | #{reason} \n"
+        end
       end
       if count != 0
         header = "#### #{heading} (#{count})\n\n"
